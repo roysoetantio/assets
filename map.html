@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Resorts World Genting — Traffic with Tilt Controls</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        html,
+        body,
+        #map {
+            height: 100%;
+            margin: 0;
+        }
+
+        .ui {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 5;
+            display: grid;
+            gap: 8px;
+        }
+
+        .pill {
+            min-width: 44px;
+            min-height: 44px;
+            padding: 0 12px;
+            border: 0;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .96);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
+            cursor: pointer;
+            font: 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+            display: grid;
+            place-items: center;
+            user-select: none;
+        }
+
+        .pill:active {
+            transform: translateY(1px);
+        }
+
+        .hud {
+            position: absolute;
+            left: 12px;
+            bottom: 12px;
+            z-index: 5;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, .92);
+            font: 12px/1.45 system-ui;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .15);
+        }
+    </style>
+
+    <!-- Added marker library -->
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBnXYNtGLH1jpB4HfFagt1Ete_kZB3jVZI&v=weekly&libraries=geometry,marker&callback=initMap"
+        async defer></script>
+
+    <script>
+        const MAP_ID = "a6b3fb86e309c590490be41c";
+        const CENTER = { lat: 3.4220, lng: 101.7934 };
+        // lat: reduce - map go up
+        const START_ZOOM = 18;
+        const START_TILT = 60;
+        const START_HEADING = 120;
+
+        const WAYPOINTS = [
+            { lat: 3.42586, lng: 101.79352 },
+            { lat: 3.42637, lng: 101.79266 },
+            { lat: 3.42522, lng: 101.79172 },
+        ];
+        const ORIGIN_DEST = { lat: 3.42504, lng: 101.79256 };
+
+        const GREEN = "#21C25E";
+        const AMBER = "#FFC107";
+        const RED = "#D93025";
+
+        const BASE_OPACITY = 0.35;
+        const GREEN_OPACITY = 0.9;
+        const BASE_W = 6;
+        const PULSE_W = 9;
+
+        const AMBER_MIN = 0.35, AMBER_MAX = 1.0, AMBER_PERIOD = 2.4;
+        const RED_MIN = 0.2, RED_MAX = 1.00, RED_PERIOD = 1.4;
+        const FRACTIONS = [0.35, 0.30, 0.35];
+
+        // --- Auto-rotate config ---
+        const ROTATE_DEG_PER_SEC = 2.00;  // adjust speed here
+        const ROTATE_INTERVAL_MS = 30;    // update cadence
+        let rotateTimer = 0;
+
+        let map, raf;
+        let greenLine, amberBase, amberPulse, redBase, redPulse;
+
+        // --- Five ambulance icon positions around RW Genting ---
+        const AMBULANCE_POINTS = [
+            { lat: 3.42590, lng: 101.79350 }, // First World vicinity
+            { lat: 3.42635, lng: 101.79270 }, // Crockfords frontage
+            { lat: 3.42520, lng: 101.79170 }, // Genting Grand frontage
+            { lat: 3.42435, lng: 101.79290 }, // SkyAvenue south side
+            { lat: 3.42385, lng: 101.79180 }, // Access/parking side
+            { lat: 3.42220, lng: 101.79399 }  // Genting SkyWorlds Theme Park
+        ];
+
+        // --- Three new vehicle icon positions (spread across the map) ---
+        const NEW_ICON_POINTS = [
+            { lat: 3.42237, lng: 101.79214 },
+            { lat: 3.42303, lng: 101.79691 },
+            { lat: 3.42377, lng: 101.79701 },
+            { lat: 3.42462, lng: 101.79135 },
+            { lat: 3.42366, lng: 101.79520 }
+        ];
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: CENTER,
+                zoom: START_ZOOM,
+                tilt: START_TILT,
+                heading: START_HEADING,
+                mapId: MAP_ID,
+                gestureHandling: "greedy",
+                zoomControl: true,
+                streetViewControl: false,
+                mapTypeControl: false,
+                fullscreenControl: false
+            });
+
+            buildUI();
+            buildRealRouteAndDraw();
+
+            // start rotating by default
+            startAutoRotate();
+
+            // add ambulance icons
+            addAmbulances();
+            addNewVehicleIcons();
+        }
+
+        // ---------- Play / Pause-able auto-rotate ----------
+        function startAutoRotate() {
+            if (rotateTimer) return; // already running
+            rotateTimer = setInterval(() => {
+                const h = map.getHeading() || 0;
+                const delta = ROTATE_DEG_PER_SEC * (ROTATE_INTERVAL_MS / 1000);
+                map.setHeading((h + delta) % 360);
+            }, ROTATE_INTERVAL_MS);
+            updateRotateBtn();
+        }
+        function stopAutoRotate() {
+            clearInterval(rotateTimer);
+            rotateTimer = 0;
+            updateRotateBtn();
+        }
+        function toggleAutoRotate() {
+            if (rotateTimer) stopAutoRotate(); else startAutoRotate();
+        }
+        function updateRotateBtn() {
+            const b = document.getElementById('btnRotate');
+            if (b) b.textContent = rotateTimer ? 'Pause' : 'Play';
+        }
+        // ---------------------------------------------------
+
+        function buildRealRouteAndDraw() {
+            const svc = new google.maps.DirectionsService();
+            svc.route({
+                origin: { location: ORIGIN_DEST },
+                destination: { location: ORIGIN_DEST },
+                waypoints: WAYPOINTS.map(p => ({ location: p })),
+                travelMode: google.maps.TravelMode.DRIVING,
+                region: "MY",
+            }, (res, status) => {
+                if (status !== "OK" || !res?.routes?.length) {
+                    alert("Directions failed: " + status);
+                    return;
+                }
+                const path = [];
+                for (const leg of res.routes[0].legs)
+                    for (const step of leg.steps)
+                        for (const p of step.path)
+                            path.push(p);
+
+                const tail = [...path].reverse().slice(0, 40);
+                const loopPath = path.concat(tail);
+
+                const { greenPath, amberPath, redPath } = slicePathByFractions(loopPath, FRACTIONS);
+
+                greenLine = new google.maps.Polyline({
+                    map, path: greenPath, strokeColor: GREEN, strokeOpacity: GREEN_OPACITY,
+                    strokeWeight: BASE_W, zIndex: 3
+                });
+                amberBase = new google.maps.Polyline({
+                    map, path: amberPath, strokeColor: AMBER, strokeOpacity: BASE_OPACITY,
+                    strokeWeight: BASE_W, zIndex: 2
+                });
+                amberPulse = new google.maps.Polyline({
+                    map, path: amberPath, strokeColor: AMBER, strokeOpacity: AMBER_MIN,
+                    strokeWeight: PULSE_W, zIndex: 4
+                });
+                redBase = new google.maps.Polyline({
+                    map, path: redPath, strokeColor: RED, strokeOpacity: BASE_OPACITY,
+                    strokeWeight: BASE_W, zIndex: 2
+                });
+                redPulse = new google.maps.Polyline({
+                    map, path: redPath, strokeColor: RED, strokeOpacity: RED_MIN,
+                    strokeWeight: PULSE_W, zIndex: 4
+                });
+
+                startPulse();
+            });
+        }
+
+        function cumulativeDistances(path) {
+            const cum = [0];
+            for (let i = 1; i < path.length; i++)
+                cum.push(cum[i - 1] + google.maps.geometry.spherical.computeDistanceBetween(path[i - 1], path[i]));
+            return { cum, total: cum[cum.length - 1] || 0 };
+        }
+        function slicePathByFractions(path, fractions) {
+            const { cum, total } = cumulativeDistances(path);
+            const targets = [];
+            let acc = 0;
+            for (const f of fractions) { acc += f; targets.push(acc * total); }
+            const idxs = targets.map(t => findIndexAtDistance(cum, t));
+            const [i1, i2] = idxs;
+            return {
+                greenPath: path.slice(0, i1 + 1),
+                amberPath: path.slice(i1, i2 + 1),
+                redPath: path.slice(i2)
+            };
+        }
+        function findIndexAtDistance(cum, target) {
+            let lo = 0, hi = cum.length - 1;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (cum[mid] < target) lo = mid + 1; else hi = mid;
+            }
+            return lo;
+        }
+
+        function startPulse() {
+            cancelAnimationFrame(raf);
+            const tick = (ts) => {
+                const t = ts / 1000;
+                const a = midPulse(AMBER_MIN, AMBER_MAX, AMBER_PERIOD, t);
+                const r = midPulse(RED_MIN, RED_MAX, RED_PERIOD, t);
+                amberPulse.setOptions({ strokeOpacity: a });
+                redPulse.setOptions({ strokeOpacity: r });
+                raf = requestAnimationFrame(tick);
+            };
+            raf = requestAnimationFrame(tick);
+        }
+        function midPulse(min, max, period, t) {
+            const span = (max - min) / 2;
+            const mid = (max + min) / 2;
+            return mid + span * Math.sin((2 * Math.PI / period) * t);
+        }
+
+        // ---------------- Ambulance icons ----------------
+        function makeAmbulanceIcon(size = 24) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+        <svg viewBox="0 0 36 36" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="16" fill="#D93025" stroke="#FFFFFF" stroke-width="3"/>
+          <g transform="translate(6,6)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 10H6"/>
+              <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+              <path d="M19 18h2a1 1 0 0 0 1-1v-3.28a1 1 0 0 0-.684-.948l-1.923-.641a1 1 0 0 1-.578-.502l-1.539-3.076A1 1 0 0 0 16.382 8H14"/>
+              <path d="M8 8v4"/>
+              <path d="M9 18h6"/>
+              <circle cx="17" cy="18" r="2"/>
+              <circle cx="7" cy="18" r="2"/>
+            </svg>
+          </g>
+        </svg>
+      `;
+            div.style.transform = 'translate(-50%, -50%)';
+            return div;
+        }
+
+        function addAmbulances() {
+            AMBULANCE_POINTS.forEach((pos) => {
+                const content = makeAmbulanceIcon(24);
+                new google.maps.marker.AdvancedMarkerElement({
+                    map,
+                    position: pos,
+                    content,
+                    zIndex: 10
+                });
+            });
+        }
+        // --------------------------------------------------
+
+
+        // traffic jam icons
+
+        function makeRedCircleVehicleIcon(size = 24) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+    <svg viewBox="0 0 36 36" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <!-- same style as ambulance: red circle + white border -->
+      <circle cx="18" cy="18" r="16" fill="#D93025" stroke="#FFFFFF" stroke-width="3"/>
+      <!-- your icon, forced to white, positioned inside the circle -->
+      <svg x="6" y="11" width="24" height="14" viewBox="0 0 25 18" xmlns="http://www.w3.org/2000/svg">
+        <path d="M14 0C14.8763 0 15.6091 0.331279 16.1865 0.740234L16.4248 0.918945L16.5068 0.993164C16.9669 1.45323 17.525 2.03607 17.9639 2.5C18.184 2.73269 18.3758 2.93766 18.5127 3.08398C18.515 3.08641 18.5173 3.08939 18.5195 3.0918C18.5658 3.10227 18.6166 3.11437 18.6719 3.12695C18.9551 3.19146 19.3516 3.28267 19.8047 3.38965C20.7076 3.60284 21.8481 3.88132 22.7676 4.13672H22.7666C23.9668 4.44885 24.9999 5.61583 25 7V10C25 10.5272 24.8193 11.0439 24.4316 11.4316C24.0439 11.8194 23.5272 12 23 12H22V13.2002C22 13.7274 21.8194 14.2441 21.4316 14.6318C21.0439 15.0196 20.5272 15.2002 20 15.2002H18.8262C18.4141 16.3649 17.3059 17.2002 16 17.2002C14.6941 17.2002 13.5859 16.3649 13.1738 15.2002H8.82617C8.41406 16.3649 7.30585 17.2002 6 17.2002C4.69415 17.2002 3.58594 16.3649 3.17383 15.2002H2C1.47275 15.2002 0.956139 15.0196 0.568359 14.6318C0.18058 14.2441 0 13.7274 0 13.2002V9.2002C0 8.68155 0.085697 8.16639 0.253906 7.67578L0.299805 7.56543L1.69922 4.66504C1.71227 4.63801 1.72676 4.61168 1.74219 4.58594C2.1231 3.95109 2.82391 3.29659 3.78418 3.20996L4.71387 1.43555C4.7227 1.4187 4.73241 1.40206 4.74219 1.38574C5.15111 0.704309 5.92871 5.32611e-06 7 0H14ZM6 13.2002C5.44772 13.2002 5 13.6479 5 14.2002C5 14.7525 5.44772 15.2002 6 15.2002C6.55228 15.2002 7 14.7525 7 14.2002C7 13.6479 6.55228 13.2002 6 13.2002ZM16 13.2002C15.4477 13.2002 15 13.6479 15 14.2002C15 14.7525 15.4477 15.2002 16 15.2002C16.5523 15.2002 17 14.7525 17 14.2002C17 13.6479 16.5523 13.2002 16 13.2002ZM4 5.2002C3.87563 5.2002 3.66326 5.29002 3.47656 5.58398L2.13184 8.36914C2.04497 8.63758 2 8.91786 2 9.2002V13.2002H3.17383C3.58594 12.0355 4.69415 11.2002 6 11.2002C7.30585 11.2002 8.41406 12.0355 8.82617 13.2002H13.1738C13.5859 12.0355 14.6941 11.2002 16 11.2002C17.3059 11.2002 18.4141 12.0355 18.8262 13.2002H20V10.2002C20 9.79391 19.6471 9.36804 19.2578 9.27051C19.2494 9.26841 19.2407 9.26598 19.2324 9.26367C18.3519 9.01908 17.2418 8.74793 16.3447 8.53613C15.898 8.43066 15.5067 8.33996 15.2275 8.27637C15.0882 8.24462 14.9768 8.21932 14.9004 8.20215C14.8621 8.19355 14.8323 8.18705 14.8125 8.18262C14.8027 8.18043 14.795 8.17883 14.79 8.17773C14.788 8.17727 14.7863 8.17701 14.7852 8.17676H14.7832C14.5854 8.1328 14.4055 8.0293 14.2676 7.88086H14.2666V7.87988C14.266 7.87926 14.2649 7.87824 14.2637 7.87695C14.2613 7.87437 14.2577 7.87037 14.2529 7.86523C14.2434 7.85502 14.2292 7.83995 14.2109 7.82031C14.174 7.78072 14.1202 7.7225 14.0527 7.65039C13.9178 7.50611 13.7279 7.30481 13.5107 7.0752C13.0878 6.62807 12.5652 6.08124 12.1328 5.64746C11.7562 5.35604 11.384 5.2002 11 5.2002H4ZM7 2C6.8744 2.00001 6.65871 2.09163 6.4707 2.39258L6.04785 3.2002H11C11.8763 3.2002 12.6091 3.53143 13.1865 3.94043L13.4248 4.11914L13.5068 4.19336C13.967 4.65347 14.525 5.23624 14.9639 5.7002C15.184 5.93296 15.3758 6.13785 15.5127 6.28418C15.515 6.28665 15.5173 6.28956 15.5195 6.29199C15.5658 6.30247 15.6166 6.31456 15.6719 6.32715C15.9551 6.39166 16.3516 6.48286 16.8047 6.58984C17.7077 6.80304 18.8481 7.08151 19.7676 7.33691H19.7666C20.9085 7.63389 21.8976 8.70458 21.9912 10H23V7C22.9999 6.59378 22.647 6.16782 22.2578 6.07031C22.2494 6.06822 22.2407 6.06578 22.2324 6.06348C21.352 5.81893 20.2426 5.54771 19.3457 5.33594C18.8988 5.23042 18.5068 5.13978 18.2275 5.07617C18.0882 5.04443 17.9768 5.01912 17.9004 5.00195C17.8622 4.99336 17.8323 4.98685 17.8125 4.98242C17.8028 4.98025 17.795 4.97864 17.79 4.97754C17.788 4.97708 17.7863 4.97682 17.7852 4.97656H17.7832C17.5854 4.93259 17.4055 4.8291 17.2676 4.68066H17.2666V4.67969C17.266 4.67905 17.2648 4.67796 17.2637 4.67676C17.2613 4.67418 17.2576 4.67009 17.2529 4.66504C17.2434 4.65482 17.2292 4.63967 17.2109 4.62012C17.1741 4.58053 17.1201 4.52223 17.0527 4.4502C16.9178 4.30593 16.7279 4.10455 16.5107 3.875C16.0878 3.42789 15.5651 2.88101 15.1328 2.44727C14.7562 2.15591 14.384 2 14 2H7Z" fill="#FFFFFF"/>
+      </svg>
+    </svg>`;
+            div.style.transform = 'translate(-50%, -50%)'; // centre on the map point
+            return div;
+        }
+
+        function addNewVehicleIcons() {
+            NEW_ICON_POINTS.forEach((pos) => {
+                const content = makeRedCircleVehicleIcon(24);
+                new google.maps.marker.AdvancedMarkerElement({
+                    map,
+                    position: pos,
+                    content,
+                    zIndex: 10
+                });
+            });
+        }
+
+        // --------------------------------------------------
+
+
+
+        function buildUI() {
+            const ui = document.createElement('div');
+            ui.className = 'ui';
+
+            // Play / Pause auto-rotate
+            const btnRotate = document.createElement('button');
+            btnRotate.id = 'btnRotate';
+            btnRotate.className = 'pill';
+            btnRotate.textContent = 'Pause';    // starts rotating by default
+            btnRotate.onclick = toggleAutoRotate;
+            ui.appendChild(btnRotate);
+
+            // 2D/3D Toggle
+            const btn3d = document.createElement('button');
+            btn3d.id = 'btn3d';
+            btn3d.className = 'pill';
+            btn3d.textContent = '2D';
+            btn3d.onclick = () => {
+                const is3D = map.getTilt() > 0;
+                map.setTilt(is3D ? 0 : START_TILT);
+                sync3DText();
+            };
+            ui.appendChild(btn3d);
+
+            // Rotate Left
+            const btnLeft = document.createElement('button');
+            btnLeft.className = 'pill';
+            btnLeft.textContent = '⟲';
+            btnLeft.onclick = () => rotateMap(-10);
+            ui.appendChild(btnLeft);
+
+            // Rotate Right
+            const btnRight = document.createElement('button');
+            btnRight.className = 'pill';
+            btnRight.textContent = '⟳';
+            btnRight.onclick = () => rotateMap(10);
+            ui.appendChild(btnRight);
+
+            // Re-center
+            const btnCenter = document.createElement('button');
+            btnCenter.className = 'pill';
+            btnCenter.textContent = 'Recenter';
+            btnCenter.onclick = () => map.setOptions({ center: CENTER, zoom: START_ZOOM });
+            ui.appendChild(btnCenter);
+
+            document.body.appendChild(ui);
+            map.addListener('tilt_changed', sync3DText);
+            sync3DText();
+            updateRotateBtn();
+        }
+
+        function rotateMap(delta) {
+            const current = map.getHeading() || 0;
+            map.setHeading((current + delta) % 360);
+        }
+
+        function sync3DText() {
+            const b = document.getElementById('btn3d');
+            if (!b) return;
+            b.textContent = (map.getTilt() > 0) ? '2D' : '3D';
+        }
+
+        window.initMap = initMap;
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div class="hud">
+        <b>Resorts World Genting — Traffic</b><br />
+        Real road loop • Green steady • Amber moderate • Red heavy<br />
+        Play/Pause auto-rotate • Toggle 2D/3D • Rotate left/right • Drag/zoom freely
+    </div>
+</body>
+
+</html>
