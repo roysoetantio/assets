@@ -1,34 +1,47 @@
 [
   {
     "title": "appletv",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/appletv.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/appletv.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "netflix",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/netflix.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/netflix.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "amazonprime",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/amazonprime.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/amazonprime.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "crunchyroll",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/crunchyroll.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/crunchyroll.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "disneyplus",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/disneyplus.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/disneyplus.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "hbomax",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/hbomax.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/hbomax.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "hulu",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/Hulu.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/Hulu.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   },
   {
     "title": "paramount",
-    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/paramount.mp4"
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/paramount.mp4",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
+  },
+  {
+    "title": "koreanwatched",
+    "backgroundURL": "https://raw.githubusercontent.com/roysoetantio/assets/4d617cdd17b7fab984561d020dbe6b458e8f3027/fusion/video/koreanwatched.jpg",
+    "logoURL": "https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/fusion/video/_emptylogo.png"
   }
 ]
