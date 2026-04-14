@@ -1,0 +1,34 @@
+[
+  {
+    "title": "appletv",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/appletv.mp4"
+  },
+  {
+    "title": "netflix",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/netflix.mp4"
+  },
+  {
+    "title": "amazonprime",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/amazonprime.mp4"
+  },
+  {
+    "title": "crunchyroll",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/crunchyroll.mp4"
+  },
+  {
+    "title": "disneyplus",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/disneyplus.mp4"
+  },
+  {
+    "title": "hbomax",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/hbomax.mp4"
+  },
+  {
+    "title": "hulu",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/Hulu.mp4"
+  },
+  {
+    "title": "paramount",
+    "videoURL": "https://github.com/roysoetantio/assets/raw/refs/heads/main/fusion/video/paramount.mp4"
+  }
+]
